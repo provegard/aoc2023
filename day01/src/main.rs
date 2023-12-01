@@ -4,26 +4,7 @@ use std::io::{self, BufRead};
 
 static DIGIT_NAMES: &[&str] = &["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
-fn min_of(option1: Option<usize>, option2: Option<usize>) -> Option<usize> {
-    match (option1, option2) {
-        (Some(a), Some(b)) => Some(std::cmp::min(a, b)),
-        (Some(a), None) => Some(a),
-        (None, Some(b)) => Some(b),
-        (None, None) => None,
-    }
-}
-
-fn max_of(option1: Option<usize>, option2: Option<usize>) -> Option<usize> {
-    match (option1, option2) {
-        (Some(a), Some(b)) => Some(std::cmp::max(a, b)),
-        (Some(a), None) => Some(a),
-        (None, Some(b)) => Some(b),
-        (None, None) => None,
-    }
-}
-
-fn read_input() -> Result<Vec<String>> {
-    let path = "day01/input";
+fn read_input(path: &str) -> Result<Vec<String>> {
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
 
@@ -31,66 +12,8 @@ fn read_input() -> Result<Vec<String>> {
     return Ok(lines);
 }
 
-fn digit_value_from_name(str: &String, idx: usize) -> u32 {
-    DIGIT_NAMES.iter().enumerate()
-        .find(|&(_index, s)| {
-            if idx + s.len() <= str.len() {
-                let string_slice = &str[idx..idx + s.len()];
-                return string_slice == *s;
-            }
-            false
-        })
-        .map(|(index, _s)| index as u32)
-        .unwrap()
-}
-
-fn digit_value(str: &String, idx: usize) -> u32 {
-    let ch = str.as_bytes()[idx] as char;
-    if ch.is_digit(10) {
-        match ch.to_digit(10) {
-            Some(value) => value,
-            None => panic!("Failed get the digit at index {} in {}", idx, str)
-        }
-    } else {
-        digit_value_from_name(str, idx)
-    }
-}
-
-fn first_digit(str: &String) -> u32 {
-    let first_digit_idx = str.find(|c: char| c.is_digit(10)); // .map(|idx| digit_value(str, idx));
-    let name_indexes: Vec<Option<usize>> = DIGIT_NAMES.iter().map(|&s| str.find(s)).collect();
-
-    let min_name_index = name_indexes.iter()
-        .filter_map(|&opt| opt)
-        .min();
-    
-    
-    let m = min_of(first_digit_idx, min_name_index);
-
-    match m {
-        Some(idx) => digit_value(str, idx),
-        None => panic!("Failed to find the first digit (numeric or written-out)")
-    }
-}
-
-fn last_digit(str: &String) -> u32 {
-    let last_digit_idx = str.rfind(|c: char| c.is_digit(10)); // .map(|idx| digit_value(str, idx));
-    let name_indexes: Vec<Option<usize>> = DIGIT_NAMES.iter().map(|&s| str.rfind(s)).collect();
-
-    let max_name_index = name_indexes.iter()
-        .filter_map(|&opt| opt)
-        .max();
-    
-    let m = max_of(last_digit_idx, max_name_index);
-
-    match m {
-        Some(idx) => digit_value(str, idx),
-        None => panic!("Failed to find the last digit (numeric or written-out)")
-    }
-}
-
 fn main() -> Result<()> {
-    let input = read_input()?;
+    let input = read_input("day01/input")?;
 
     println!("Part 1:");
     println!("{}", part1(&input)?); // 56397
@@ -100,30 +23,53 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn digits_in_including_names(str: &String) -> Vec<u32> {
+    str
+        .chars()
+        .enumerate()
+        .map(|(index, ch)| {
+            // Try to parse the char as digit. If it fails, try to find if the current position contains a digit by name.
+            ch.to_digit(10).or({
+                DIGIT_NAMES.iter().enumerate().find(|&(_i, name)| {
+                    str[index..].find(name) == Some(0)
+                })
+                .map(|(name_index, _s)| name_index as u32)
+            })
+        })
+        .filter_map(|x| x)
+        .collect()
+}
 
-fn part1(input: &Vec<String>) -> Result<u32> {
+fn digits_in(str: &String) -> Vec<u32> {
+    str
+        .chars()
+        .map(|c| c.to_digit(10))
+        .filter_map(|x| x)
+        .collect()
+}
+
+fn part<F>(input: &Vec<String>, digit_finder: F) -> Result<u32> where F: Fn(&String) -> Vec<u32> {
     let value = input.iter().fold(0, |acc, s| {
-        let first_digit_idx = s.find(|c: char| c.is_digit(10)).unwrap();
-        let last_digit_idx = s.rfind(|c: char| c.is_digit(10)).unwrap();
+        let digits = digit_finder(s);
+        let first_digit = digits.first().unwrap();
+        let last_digit = digits.last().unwrap();
 
-        acc + 10 * digit_value(&s, first_digit_idx) + digit_value(&s, last_digit_idx)
+        acc + 10 * first_digit + last_digit
     });
     Ok(value)
 }
 
-fn part2(input: &Vec<String>) -> Result<u32> {
-    let value = input.iter().fold(0, |acc, s| {
-        let first = first_digit(s);
-        let last = last_digit(s);
+fn part1(input: &Vec<String>) -> Result<u32> {
+    part(input, digits_in)
+}
 
-        acc + 10 * first + last
-    });
-    Ok(value)
+fn part2(input: &Vec<String>) -> Result<u32> {
+    part(input, digits_in_including_names)
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{part1, part2};
+    use crate::{part1, part2, read_input};
     use anyhow::Result;
 
     #[test]
@@ -150,6 +96,20 @@ mod test {
             String::from("7pqrstsixteen"),
         );
         assert_eq!(part2(&input).unwrap(), 281);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part1_input() -> Result<()> {
+        let input = read_input("input")?;
+        assert_eq!(part1(&input).unwrap(), 56397);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = read_input("input")?;
+        assert_eq!(part2(&input).unwrap(), 55701);
         Ok(())
     }
 }
