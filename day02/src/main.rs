@@ -23,22 +23,26 @@ fn satisfies<T, P>(opt: Option<T>, predicate: P) -> bool where P: Fn(T) -> bool 
     }
 }
 
+fn color_counts(game: &Game) -> HashMap<String, u32> {
+    let all_cubes = game.picks.iter().flat_map(|p| p.cubes.clone());
+    let cc = all_cubes.fold(HashMap::<String, u32>::new(), |acc, pick| {
+        let current_count = *acc.get(&pick.0).unwrap_or(&0u32);
+        if pick.1 > current_count {
+            let mut new_acc = acc.clone();
+            new_acc.insert(pick.0, pick.1);
+            new_acc
+        } else {
+            acc
+        }
+    });
+    cc
+}
+
 fn part1(input: &Input) -> Result<u32> {
     // only 12 red cubes, 13 green cubes, and 14 blue cubes
     let games = input.as_lines().map(|line| parse_game(line));
     let possible_games = games.filter(|game| {
-        let all_cubes = game.picks.iter().flat_map(|p| p.cubes.clone());
-
-        let cc = all_cubes.fold(HashMap::<String, u32>::new(), |acc, pick| {
-            let current_count = *acc.get(&pick.0).unwrap_or(&0u32);
-            if pick.1 > current_count {
-                let mut new_acc = acc.clone();
-                new_acc.insert(pick.0, pick.1);
-                new_acc
-            } else {
-                acc
-            }
-        });
+        let cc = color_counts(game);
 
         let possible = satisfies(cc.get("red"), |x| x <= &12u32) &&
             satisfies(cc.get("green"), |x| x <= &13u32) &&
@@ -51,21 +55,9 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-
     let games = input.as_lines().map(|line| parse_game(line));
     let powers = games.map(|game| {
-        let all_cubes = game.picks.iter().flat_map(|p| p.cubes.clone());
-
-        let cc = all_cubes.fold(HashMap::<String, u32>::new(), |acc, pick| {
-            let current_count = *acc.get(&pick.0).unwrap_or(&0u32);
-            if pick.1 > current_count {
-                let mut new_acc = acc.clone();
-                new_acc.insert(pick.0, pick.1);
-                new_acc
-            } else {
-                acc
-            }
-        });
+        let cc = color_counts(&game);
 
         let power = cc.iter().fold(1u32, |acc, pair| acc * pair.1);
 
