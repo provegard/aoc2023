@@ -44,8 +44,6 @@ fn part1(input: &Input) -> Result<u32> {
             satisfies(cc.get("green"), |x| x <= &13u32) &&
             satisfies(cc.get("blue"), |x| x <= &14u32);
 
-        println!("Game {}, {:?} => {}", game.id, cc, possible);
-
         possible
     });
     let result = possible_games.map(|game| game.id).sum();
@@ -53,7 +51,28 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+
+    let games = input.as_lines().map(|line| parse_game(line));
+    let powers = games.map(|game| {
+        let all_cubes = game.picks.iter().flat_map(|p| p.cubes.clone());
+
+        let cc = all_cubes.fold(HashMap::<String, u32>::new(), |acc, pick| {
+            let current_count = *acc.get(&pick.0).unwrap_or(&0u32);
+            if pick.1 > current_count {
+                let mut new_acc = acc.clone();
+                new_acc.insert(pick.0, pick.1);
+                new_acc
+            } else {
+                acc
+            }
+        });
+
+        let power = cc.iter().fold(1u32, |acc, pair| acc * pair.1);
+
+        power
+    });
+    let result = powers.sum();
+    Ok(result)
 }
 
 #[derive(PartialEq)]
@@ -165,11 +184,23 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::from_lines([
+            "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green",
+            "Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue",
+            "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red",
+            "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red",
+            "Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green",
+        ]);
+        assert_eq!(part2(&input).unwrap(), 2286);
+        Ok(())
+    }
+    
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = Input::load("input")?;
+        assert_eq!(part2(&input).unwrap(), 60948);
+        Ok(())
+    }
 }
