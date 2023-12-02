@@ -39,31 +39,34 @@ fn color_counts(game: &Game) -> HashMap<String, u32> {
 }
 
 fn part1(input: &Input) -> Result<u32> {
-    // only 12 red cubes, 13 green cubes, and 14 blue cubes
-    let games = input.as_lines().map(|line| parse_game(line));
-    let possible_games = games.filter(|game| {
-        let cc = color_counts(game);
+    let result = input.as_lines()
+        .map(|line| parse_game(line))
+        .filter(|game| {
+            let cc = color_counts(game);
 
-        let possible = satisfies(cc.get("red"), |x| x <= &12u32) &&
-            satisfies(cc.get("green"), |x| x <= &13u32) &&
-            satisfies(cc.get("blue"), |x| x <= &14u32);
+            // only 12 red cubes, 13 green cubes, and 14 blue cubes
+            let possible = satisfies(cc.get("red"), |x| x <= &12u32) &&
+                satisfies(cc.get("green"), |x| x <= &13u32) &&
+                satisfies(cc.get("blue"), |x| x <= &14u32);
 
-        possible
-    });
-    let result = possible_games.map(|game| game.id).sum();
+            possible
+        })
+        .map(|game| game.id)
+        .sum();
     Ok(result)
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    let games = input.as_lines().map(|line| parse_game(line));
-    let powers = games.map(|game| {
-        let cc = color_counts(&game);
+    let result = input.as_lines()
+        .map(|line| parse_game(line))
+        .map(|game| {
+            let cc = color_counts(&game);
 
-        let power = cc.iter().fold(1u32, |acc, pair| acc * pair.1);
+            let power = cc.iter().fold(1u32, |acc, pair| acc * pair.1);
 
-        power
-    });
-    let result = powers.sum();
+            power
+        })
+        .sum();
     Ok(result)
 }
 
