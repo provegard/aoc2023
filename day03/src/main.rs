@@ -1,6 +1,6 @@
 use anyhow::Result;
 use itertools::Itertools;
-
+use std::collections::{HashSet, HashMap};
 use util::Input;
 
 struct Grid {
@@ -109,7 +109,35 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+    let grid = to_grid(input);
+    let coords = all_coords(&grid);
+    let gear_coords: HashSet<_> = coords.iter().filter(|c| char_at(&grid, c) == '*').collect();
+
+    let numbers_with_gear_coord: Vec<_> = find_number_groups(&grid)
+        .iter()
+        .filter_map(|grp| {
+            let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
+            let gear_coord = surrounding.iter().find(|c| gear_coords.contains(c));
+            let number = grp.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap());
+
+            gear_coord.map(|c| (c.clone(), number))
+        })
+        .collect();
+
+    // Group by coord
+    let mut groups: HashMap<Coord, Vec<u32>> = HashMap::new();
+    for item in numbers_with_gear_coord {
+        let key = item.0;
+        groups.entry(key).or_insert_with(Vec::new).push(item.1);
+    }
+
+    let sum: u32 = groups
+        .iter()
+        .filter(|e| e.1.len() == 2)
+        .map(|e| e.1.iter().fold(1, |acc, x| acc * x))
+        .sum();
+
+    Ok(sum)
 }
 
 #[cfg(test)]
@@ -166,13 +194,30 @@ mod test {
         let input = Input::load("input")?;
         assert_eq!(part1(&input).unwrap(), 527364);
         Ok(())
-    }    
+    }
+    
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::from_lines([
+            "467..114..",
+            "...*......",
+            "..35..633.",
+            "......#...",
+            "617*......",
+            ".....+.58.",
+            "..592.....",
+            "......755.",
+            "...$.*....",
+            ".664.598..",
+        ]);
+        assert_eq!(part2(&input).unwrap(), 467835);
+        Ok(())
+    }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = Input::load("input")?;
+        assert_eq!(part2(&input).unwrap(), 79026871);
+        Ok(())
+    }
 }
