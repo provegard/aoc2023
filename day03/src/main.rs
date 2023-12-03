@@ -132,8 +132,8 @@ fn part2(input: &Input) -> Result<u32> {
 
     let sum: u32 = groups
         .iter()
-        .filter(|e| e.1.len() == 2)
-        .map(|e| e.1.iter().fold(1, |acc, x| acc * *x))
+        .filter(|e| e.1.len() == 2) // limit to groups with exactly two numbers
+        .map(|e| e.1.iter().fold(1, |acc, x| acc * *x)) // multiply the numbers
         .sum();
 
     Ok(sum)
