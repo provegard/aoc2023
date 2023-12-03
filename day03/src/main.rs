@@ -71,19 +71,19 @@ fn find_number_groups(grid: &Grid) -> Vec<Vec<Coord>> {
     for coord in all_digit_coords(grid) {
         match current_group {
             Some(ref mut grp) if coord.1 > 0 && grp.last().unwrap().1 == coord.1 - 1 => grp.push(coord),
-            Some(ref grp) => {
-                // new group
-                groups.push(grp.to_vec());
+            _ => {
+                if let Some(ref grp) = current_group {
+                    // Stash the current group
+                    groups.push(grp.to_vec());
+                }
+                // New group
                 let grp: Vec<Coord> = vec![coord];
                 current_group = Some(grp);
-            },
-            None => {
-                let grp: Vec<Coord> = vec![coord]; // TODO: Fix duplication
-                current_group = Some(grp);
-            },
+            }
         }
     }
 
+    // Stash final group, if any
     if let Some(ref grp) = current_group {
         groups.push(grp.to_vec());
     }
