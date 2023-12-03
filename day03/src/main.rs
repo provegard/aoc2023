@@ -1,7 +1,7 @@
 use anyhow::Result;
 use itertools::Itertools;
-use std::collections::{HashSet, HashMap};
-use util::Input;
+use std::collections::{HashSet};
+use util::{Input, group_by};
 
 struct Grid {
     lines: Vec<String>,
@@ -89,16 +89,6 @@ fn find_number_groups(grid: &Grid) -> Vec<Vec<Coord>> {
     groups
 }
 
-fn group_by<T, K, V, F, FV>(items: &Vec<T>, key_fn: F, value_fn: FV) -> HashMap<&K, Vec<&V>> where F: Fn(&T) -> &K, FV: Fn(&T) -> &V, K: Eq, K: std::hash::Hash {
-    let mut groups: HashMap<&K, Vec<&V>> = HashMap::new();
-    for item in items.iter() {
-        let key = key_fn(item);
-        let value = value_fn(item);
-        groups.entry(key).or_insert_with(Vec::new).push(value);
-    }
-    groups
-}
-
 fn part1(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
 
@@ -132,11 +122,6 @@ fn part2(input: &Input) -> Result<u32> {
         .collect();
 
     // Group by coord
-    // let mut groups: HashMap<Coord, Vec<u32>> = HashMap::new();
-    // for item in numbers_with_gear_coord {
-    //     let key = item.0;
-    //     groups.entry(key).or_insert_with(Vec::new).push(item.1);
-    // }
     let groups = group_by(&numbers_with_gear_coord, |tup| &tup.0, |tup| &tup.1);
 
     let sum: u32 = groups

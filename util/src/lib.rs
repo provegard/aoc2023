@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::str::Split;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Input(String);
@@ -48,4 +49,15 @@ impl Input {
     pub fn as_lines(&self) -> Split<char> {
         self.0.trim_end().split('\n')
     }
+}
+
+/// Works like GroupBy in C#; groups items by an item-derived key, associating a list of item-derived values with each key.
+pub fn group_by<T, K, V, F, FV>(items: &Vec<T>, key_fn: F, value_fn: FV) -> HashMap<&K, Vec<&V>> where F: Fn(&T) -> &K, FV: Fn(&T) -> &V, K: Eq, K: std::hash::Hash {
+    let mut groups: HashMap<&K, Vec<&V>> = HashMap::new();
+    for item in items.iter() {
+        let key = key_fn(item);
+        let value = value_fn(item);
+        groups.entry(key).or_insert_with(Vec::new).push(value);
+    }
+    groups
 }
