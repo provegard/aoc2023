@@ -61,3 +61,11 @@ pub fn group_by<T, K, V, F, FV>(items: &Vec<T>, key_fn: F, value_fn: FV) -> Hash
     }
     groups
 }
+
+/// Tests if the given Option contains a value that satisfies the predicate.
+pub fn satisfies<T, P>(opt: Option<T>, predicate: P) -> bool where P: Fn(T) -> bool {
+    match opt {
+        Some(t) => predicate(t),
+        None => false,
+    }
+}

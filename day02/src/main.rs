@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
-use util::Input;
+use util::{Input, satisfies};
 
 fn main() -> Result<()> {
     let input = Input::load("day02/input")?;
@@ -14,13 +14,6 @@ fn main() -> Result<()> {
     println!("Part 2:");
     println!("{}", part2(&input)?);
     Ok(())
-}
-
-fn satisfies<T, P>(opt: Option<T>, predicate: P) -> bool where P: Fn(T) -> bool {
-    match opt {
-        Some(t) => predicate(t),
-        None => false,
-    }
 }
 
 fn color_counts(game: &Game) -> HashMap<String, u32> {
