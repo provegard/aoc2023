@@ -91,15 +91,19 @@ fn find_number_runs(grid: &Grid) -> Vec<Vec<Coord>> {
     runs
 }
 
+fn run_to_number(grid: &Grid, run: &Vec<Coord>) -> u32 {
+    run.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap())
+}
+
 fn part1(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
 
     let sum: u32 = find_number_runs(&grid)
         .iter()
-        .filter_map(|grp| {
-            let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
+        .filter_map(|run| {
+            let surrounding: Vec<_> = run.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
             let first_symbol = surrounding.iter().find(|c| is_symbol(char_at(&grid, c)));
-            let number = grp.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap());
+            let number = run_to_number(&grid, run);
 
             first_symbol.map(|_| number)
         })
@@ -114,10 +118,10 @@ fn part2(input: &Input) -> Result<u32> {
 
     let numbers_with_gear_coord: Vec<_> = find_number_runs(&grid)
         .iter()
-        .filter_map(|grp| {
-            let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
+        .filter_map(|run| {
+            let surrounding: Vec<_> = run.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
             let gear_coord = surrounding.iter().find(|c| gear_coords.contains(c));
-            let number = grp.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap());
+            let number = run_to_number(&grid, run);
 
             gear_coord.map(|c| (c.clone(), number))
         })
