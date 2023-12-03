@@ -41,7 +41,7 @@ fn surrounding_coords(grid: &Grid, coord: &Coord) -> Vec<Coord> {
     let cc = grid.col_count as isize;
 
     let vec: Vec<_> = (-1..=1).flat_map(|r| (-1..=1).map(move |c| (r, c)))
-        .filter(|tup| !(tup.0 == 0 && tup.1 == 0))
+        .filter(|tup| !(tup.0 == 0 && tup.1 == 0)) // skip the coordinate itself
         .filter_map(|tup| {
             let new_r = (coord.0 as isize) + tup.0;
             let new_c = (coord.1 as isize) + tup.1;
@@ -63,36 +63,38 @@ fn all_digit_coords<'a>(grid: &'a Grid) -> impl Iterator<Item = Coord> + 'a {
     all_coords(grid).filter(|c| char_at(grid, c).is_digit(10))
 }
 
-fn find_number_groups(grid: &Grid) -> Vec<Vec<Coord>> {
-    let mut groups: Vec<Vec<Coord>> = Vec::new();
-    let mut current_group: Option<Vec<Coord>> = None;
+fn find_number_runs(grid: &Grid) -> Vec<Vec<Coord>> {
+    let mut runs: Vec<Vec<Coord>> = Vec::new();
+    let mut current_run: Option<Vec<Coord>> = None;
     for coord in all_digit_coords(grid) {
-        match current_group {
-            Some(ref mut grp) if coord.1 > 0 && grp.last().unwrap().1 == coord.1 - 1 => grp.push(coord),
+        match current_run {
+            // If we have a current run, and the digit in question immediately succeeds the last digit in that run,
+            // then add it to the run.
+            Some(ref mut run) if coord.1 > 0 && run.last().unwrap().1 == coord.1 - 1 => run.push(coord),
             _ => {
-                if let Some(ref grp) = current_group {
+                // If we have a current run, stash it so we can begin a new one.
+                if let Some(ref grp) = current_run {
                     // Stash the current group
-                    groups.push(grp.to_vec());
+                    runs.push(grp.to_vec());
                 }
-                // New group
-                let grp: Vec<Coord> = vec![coord];
-                current_group = Some(grp);
+                // Begin a new run.
+                current_run = Some(vec![coord]);
             }
         }
     }
 
-    // Stash final group, if any
-    if let Some(ref grp) = current_group {
-        groups.push(grp.to_vec());
+    // Stash final run, if any.
+    if let Some(ref grp) = current_run {
+        runs.push(grp.to_vec());
     }
 
-    groups
+    runs
 }
 
 fn part1(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
 
-    let sum: u32 = find_number_groups(&grid)
+    let sum: u32 = find_number_runs(&grid)
         .iter()
         .map(|grp| {
             let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
@@ -110,7 +112,7 @@ fn part2(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
     let gear_coords: HashSet<_> = all_coords(&grid).filter(|c| char_at(&grid, c) == '*').collect();
 
-    let numbers_with_gear_coord: Vec<_> = find_number_groups(&grid)
+    let numbers_with_gear_coord: Vec<_> = find_number_runs(&grid)
         .iter()
         .filter_map(|grp| {
             let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
