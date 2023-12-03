@@ -55,14 +55,12 @@ fn surrounding_coords(grid: &Grid, coord: &Coord) -> Vec<Coord> {
     vec
 }
 
-fn all_coords(grid: &Grid) -> Vec<Coord> {
-    let vec: Vec<Coord> = (0..grid.row_count).flat_map(|r| (0..grid.col_count).map(move |c| Coord(r, c))).collect();
-    vec
+fn all_coords<'a>(grid: &'a Grid) -> impl Iterator<Item = Coord> + 'a {
+    (0..grid.row_count).flat_map(|r| (0..grid.col_count).map(move |c| Coord(r, c)))
 }
 
-fn all_digit_coords(grid: &Grid) -> Vec<Coord> {
-    let vec: Vec<_> = all_coords(grid).into_iter().filter(|c| char_at(grid, c).is_digit(10)).collect();
-    vec
+fn all_digit_coords<'a>(grid: &'a Grid) -> impl Iterator<Item = Coord> + 'a {
+    all_coords(grid).filter(|c| char_at(grid, c).is_digit(10))
 }
 
 fn find_number_groups(grid: &Grid) -> Vec<Vec<Coord>> {
@@ -110,8 +108,7 @@ fn part1(input: &Input) -> Result<u32> {
 
 fn part2(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
-    let coords = all_coords(&grid);
-    let gear_coords: HashSet<_> = coords.iter().filter(|c| char_at(&grid, c) == '*').collect();
+    let gear_coords: HashSet<_> = all_coords(&grid).filter(|c| char_at(&grid, c) == '*').collect();
 
     let numbers_with_gear_coord: Vec<_> = find_number_groups(&grid)
         .iter()
