@@ -96,12 +96,12 @@ fn part1(input: &Input) -> Result<u32> {
 
     let sum: u32 = find_number_runs(&grid)
         .iter()
-        .map(|grp| {
+        .filter_map(|grp| {
             let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
-            let has_symbol = surrounding.iter().any(|c| is_symbol(char_at(&grid, c)));
+            let first_symbol = surrounding.iter().find(|c| is_symbol(char_at(&grid, c)));
             let number = grp.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap());
 
-            if has_symbol { number } else { 0 }
+            first_symbol.map(|_| number)
         })
         .sum();
 
