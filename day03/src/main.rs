@@ -3,17 +3,6 @@ use itertools::Itertools;
 
 use util::Input;
 
-fn main() -> Result<()> {
-    let input = Input::load("day03/input")?;
-
-    println!("Part 1:");
-    println!("{}", part1(&input)?);
-
-    println!("Part 2:");
-    println!("{}", part2(&input)?);
-    Ok(())
-}
-
 struct Grid {
     lines: Vec<String>,
     row_count: usize,
@@ -33,11 +22,7 @@ fn to_grid(input: &Input) -> Grid {
     assert!(row_count > 0);
     let col_count = lines.get(0).map(|s| s.len()).unwrap();
 
-    return Grid {
-        lines,
-        row_count,
-        col_count,
-    }
+    return Grid { lines, row_count, col_count }
 }
 
 fn char_at(grid: &Grid, coord: &Coord) -> char {
@@ -52,23 +37,20 @@ fn is_symbol(ch: char) -> bool {
 }
 
 fn surrounding_coords(grid: &Grid, coord: &Coord) -> Vec<Coord> {
-    let mut vec: Vec<Coord> = Vec::new();
-
     let rc = grid.row_count as isize;
     let cc = grid.col_count as isize;
 
-    for rd in -1..=1 {
-        for cd in -1..=1 {
-            if !(rd == 0 && cd == 0) {
-                let new_r = (coord.0 as isize) + rd;
-                let new_c = (coord.1 as isize) + cd;
+    let vec: Vec<_> = (-1..=1).flat_map(|r| (-1..=1).map(move |c| (r, c)))
+        .filter(|tup| !(tup.0 == 0 && tup.1 == 0))
+        .filter_map(|tup| {
+            let new_r = (coord.0 as isize) + tup.0;
+            let new_c = (coord.1 as isize) + tup.1;
 
-                if new_r >= 0 && new_c >= 0 && new_r < rc && new_c < cc {
-                    vec.push(Coord(new_r as usize, new_c as usize))
-                }
-            }
-        }
-    }
+            if new_r >= 0 && new_c >= 0 && new_r < rc && new_c < cc {
+                Some(Coord(new_r as usize, new_c as usize))
+            } else { None }
+        })
+        .collect();
 
     vec
 }
@@ -111,16 +93,17 @@ fn find_number_groups(grid: &Grid) -> Vec<Vec<Coord>> {
 
 fn part1(input: &Input) -> Result<u32> {
     let grid = to_grid(input);
-    let mut sum = 0;
-    for grp in find_number_groups(&grid) {
-        let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
-        let has_symbol = surrounding.iter().any(|c| is_symbol(char_at(&grid, c)));
 
-        if has_symbol {
+    let sum: u32 = find_number_groups(&grid)
+        .iter()
+        .map(|grp| {
+            let surrounding: Vec<_> = grp.iter().flat_map(|c| surrounding_coords(&grid, c)).unique().collect();
+            let has_symbol = surrounding.iter().any(|c| is_symbol(char_at(&grid, c)));
             let number = grp.iter().fold(0, |acc, c| 10 * acc + char_at(&grid, c).to_digit(10).unwrap());
-            sum += number;
-        }
-    }
+
+            if has_symbol { number } else { 0 }
+        })
+        .sum();
 
     Ok(sum)
 }
