@@ -38,22 +38,17 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    let mut card_counts = HashMap::<u32, u32>::new();
-
     let cards: Vec<_> = input.as_lines().map(|line| to_card(line)).collect();
 
-    // Set initial counts
-    for card in &cards {
-        card_counts.insert(card.id, 1);
-    }
+    // Create HashMap with initial counts
+    let mut card_counts: HashMap<_, _> = cards.iter().map(|c| (c.id, 1)).collect();
 
     for card in &cards {
         let winning_card_count = card_counts.get(&card.id).unwrap().clone();
-        let win_count = card.on_hand.iter().fold(0u32, |acc, num| if card.winning.contains(num) { acc + 1 } else { acc });
+        let win_count = card.on_hand.iter().filter(|num| card.winning.contains(num)).count() as u32;
         let next = card.id + 1;
         for following_card_id in next..(next + win_count) {
-            let following_card_count = card_counts.get(&following_card_id).unwrap();
-            card_counts.insert(following_card_id, following_card_count + winning_card_count);
+            card_counts.entry(following_card_id).and_modify(|c| *c += winning_card_count);
         }
     }
 
