@@ -24,13 +24,9 @@ fn part1(input: &Input) -> Result<u32> {
         .map(|line| {
             let card = to_card(line);
 
-            let points = card.on_hand.iter().fold(0, |acc, num| {
-                let is_winning = card.winning.contains(num);
-                let ret = if is_winning {
-                    if acc == 0 { 1 } else { acc * 2 }
-                } else { acc };
-                ret
-            });
+            let wins = card.on_hand.iter().filter(|num| card.winning.contains(num)).count() as u32;
+            let points = if wins > 0 { 1 << (wins-1) } else { 0 };
+
             points
         })
         .sum();
