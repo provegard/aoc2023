@@ -3,16 +3,29 @@ use std::collections::HashSet;
 
 use util::Input;
 
+struct Card {
+    id: u32,
+    winning: HashSet<u32>,
+    on_hand: Vec<u32>,
+}
+
+fn to_card(line: &str) -> Card {
+    let col_idx = line.find(":").unwrap();
+    let pipe_idx = line.find("|").unwrap();
+    let winning: HashSet<_> = line[col_idx+1..pipe_idx].trim().split_ascii_whitespace().map(|str_num| str_num.parse::<u32>().unwrap()).collect();
+    let on_hand: Vec<_> = line[pipe_idx+1..].trim().split_ascii_whitespace().map(|str_num| str_num.parse::<u32>().unwrap()).collect();
+    let id = line[..col_idx].replace("Card", "").trim().parse::<u32>().unwrap();
+
+    return Card { id, winning, on_hand };
+}
+
 fn part1(input: &Input) -> Result<u32> {
     let result: u32 = input.as_lines()
         .map(|line| {
-            let col_idx = line.find(":").unwrap();
-            let pipe_idx = line.find("|").unwrap();
-            let winning: HashSet<_> = line[col_idx+1..pipe_idx].trim().split_ascii_whitespace().map(|str_num| str_num.parse::<u32>().unwrap()).collect();
-            let on_hand: Vec<_> = line[pipe_idx+1..].trim().split_ascii_whitespace().map(|str_num| str_num.parse::<u32>().unwrap()).collect();
+            let card = to_card(line);
 
-            let points = on_hand.iter().fold(0, |acc, num| {
-                let is_winning = winning.contains(num);
+            let points = card.on_hand.iter().fold(0, |acc, num| {
+                let is_winning = card.winning.contains(num);
                 let ret = if is_winning {
                     if acc == 0 { 1 } else { acc * 2 }
                 } else { acc };
