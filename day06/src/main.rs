@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
 use util::Input;
@@ -16,6 +16,10 @@ fn extract_numbers(s: &str) -> Vec<u64> {
         .flat_map(|ns| ns.trim().split_ascii_whitespace())
         .map(|ns| ns.parse::<u64>().unwrap())
         .collect_vec()
+}
+
+fn remove_whitespace(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 impl Race {
@@ -42,10 +46,7 @@ impl Race {
 
     fn from_input_p2(input: &Input) -> Vec<Race> {
         let lines = input.as_lines()
-            .map(|line| {
-                let no_ws: String = line.chars().filter(|c| !c.is_whitespace()).collect();
-                no_ws
-            })
+            .map(|line| remove_whitespace(line))
             .collect_vec();
         Race::from_lines(lines)
     }
@@ -54,35 +55,22 @@ impl Race {
         if ht >= self.time { 0 } else { (self.time - ht) * ht }
     }
 
-    fn is_win(&self, distance: u64) -> bool {
-        distance > self.distance
-    }
-
-    fn win_times(&self) -> Vec<u64> {
-        (0..self.time).filter(|ht| self.is_win(self.distance_from_hold_time(*ht))).collect_vec()
-    }
-
-    fn win_count(&self) -> usize {
-        (0..self.time).filter(|ht| self.is_win(self.distance_from_hold_time(*ht))).count()
+    fn win_count(&self) -> u32 {
+        (0..self.time).filter(|ht| self.distance_from_hold_time(*ht) > self.distance).count() as u32
     }
 
 }
 
 fn part1(input: &Input) -> Result<u32> {
     let races = Race::from_input(input);
-    let res = races.iter().fold(1, |acc, race| {
-        acc * race.win_times().len() as u32
-    });
+    let res = races.iter().fold(1, |acc, race| acc * race.win_count());
     Ok(res)
 }
 
 fn part2(input: &Input) -> Result<u32> {
     let races = Race::from_input_p2(input);
-    let result = match races.first() {
-        Some(r) => r.win_count() as u32,
-        None => panic!("No first race")
-    };
-    Ok(result)
+
+    races.first().map(|r| r.win_count()).ok_or_else(|| anyhow!("No first race"))
 }
 
 #[cfg(test)]
