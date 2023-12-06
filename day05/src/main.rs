@@ -1,3 +1,5 @@
+use std::cmp::{min, max};
+
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use regex::Regex;
@@ -35,6 +37,64 @@ struct Map {
 struct Almanac {
     seeds: Vec<u64>,
     maps: Vec<Map>,
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+struct Range {
+    start: u64,
+    length: u64
+}
+
+fn intersection(r1: &Range, r2: &Range) -> Option<Range> {
+    let smaller = if r1.start < r2.start { r1 } else { r2 };
+    let larger = if smaller == r1 { r2 } else { r1 };
+    let start = max(smaller.start, larger.start);
+    let end_exclusive = min(smaller.start + smaller.length, larger.start + larger.length);
+    if end_exclusive <= start {
+        None
+    } else {
+        let length = end_exclusive - start;
+        Some(Range { start, length })
+    }
+}
+
+fn union(r1: &Range, r2: &Range) -> Option<Range> {
+    let smaller = if r1.start < r2.start { r1 } else { r2 };
+    let larger = if smaller == r1 { r2 } else { r1 };
+
+    if smaller.start + smaller.length < larger.start {
+        None
+    } else {
+        let length = larger.start + larger.length - smaller.start;
+        Some(Range { start: smaller.start, length })
+    }
+}
+
+fn split_range_for_map_part(range: &Range, part: &MapPart) -> Vec<Range> {
+    let mut vec = Vec::<Range>::new();
+    // Below
+    if range.start < part.source_range_start {
+        let len = min(part.source_range_start - range.start, range.length);
+        vec.push(Range { start: range.start, length: len })
+    }
+
+    // Overlap
+    let r2 = Range { start: part.source_range_start, length: part.length };
+    let diff = (part.dest_range_start as i64) - (part.source_range_start as i64);
+    match intersection(range, &r2) {
+        Some(r) => vec.push(Range { start: ((r.start as i64) + diff) as u64, length: r.length }),
+        None => {}
+    };
+
+
+    // Above
+    if range.start >= part.source_range_start + part.length {
+        vec.push(range.clone())
+    }
+
+    println!("Split {:?} with {:?} -> {:?}", range, part, vec);
+
+    vec
 }
 
 fn to_component_kind(s: &str) -> ComponentKind {
@@ -142,13 +202,66 @@ fn part1(input: &Input) -> Result<u64> {
     }
 }
 
+fn merge_ranges(ranges: &Vec<Range>) -> Vec<Range> {
+    let mut ranges_copy = ranges.clone();
+    ranges_copy.sort_by_key(|r| r.start);
+    let merged = ranges_copy.iter().fold(Vec::<Range>::new(), |mut acc, r| {
+        match acc.last_mut() {
+            Some(last) => {
+                match union(last, r) {
+                    Some(u_range) => {
+                        *last = u_range;
+                    },
+                    None => acc.push(r.clone()),
+                }
+            },
+            None => acc.push(r.clone()),
+        }
+        acc
+    });
+    merged
+}
+
+fn map_ranges_recursive(almanac: &Almanac, ranges: Vec<Range>, from: ComponentKind) -> Vec<Range> {
+
+    //println!("from: {:?}, ranges = {:?}", from, ranges);
+
+    let mp = almanac.maps.iter().find(|m| m.from_type == from);
+    match mp {
+        Some(m) => {
+            // Find new ranges by splitting them on each map part.
+            let new_ranges = m.parts.iter()
+                .flat_map(|p| {
+                    let rr = ranges.iter().flat_map(|r| split_range_for_map_part(r, p)).collect_vec();
+                    rr
+                })
+                .collect_vec();
+
+            // Merge the resulting ranges
+            let merged = merge_ranges(&new_ranges);
+
+            //println!("to  : {:?}, ranges = {:?}", m.to_type, merged);
+            //println!("");
+
+            map_ranges_recursive(almanac, merged, m.to_type)
+        },
+        None => ranges, // done
+    }
+}
+
 fn part2(input: &Input) -> Result<u64> {
+    let almanac = parse_almanac(input);
+    let ranges = almanac.seeds.chunks(2).map(|arr| Range { start: arr[0], length: arr[1] }).collect_vec();
+    let rr = map_ranges_recursive(&almanac, ranges, ComponentKind::Seed);
+
+    println!("{:?}", rr);
+
     Ok(0)
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{part1, part2, parse_almanac, Map, MapPart, Almanac, ComponentKind};
+    use crate::{part1, part2, parse_almanac, Map, MapPart, Almanac, ComponentKind, split_range_for_map_part, Range, intersection, union, merge_ranges};
     use anyhow::Result;
     use util::Input;
 
@@ -216,11 +329,187 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_split_range_for_map_part_below_1() -> Result<()> {
+        let part = MapPart { dest_range_start: 20, source_range_start: 30, length: 2 };
+        let range = Range { start: 28, length: 1 };
+        let res = split_range_for_map_part(&range, &part);
+
+        assert_eq!(res, vec![
+            Range { start: 28, length: 1 }
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_split_range_for_map_part_below_2() -> Result<()> {
+        let part = MapPart { dest_range_start: 20, source_range_start: 30, length: 2 };
+        let range = Range { start: 28, length: 2 };
+        let res = split_range_for_map_part(&range, &part);
+
+        assert_eq!(res, vec![
+            Range { start: 28, length: 2 }
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_split_range_for_map_part_overlap() -> Result<()> {
+        let part = MapPart { dest_range_start: 20, source_range_start: 30, length: 2 };
+        let range = Range { start: 28, length: 3 };
+        let res = split_range_for_map_part(&range, &part);
+
+        assert_eq!(res, vec![
+            Range { start: 28, length: 2 },
+            Range { start: 20, length: 1 }
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_split_range_for_map_part_above() -> Result<()> {
+        let part = MapPart { dest_range_start: 20, source_range_start: 30, length: 2 };
+        let range = Range { start: 32, length: 3 };
+        let res = split_range_for_map_part(&range, &part);
+
+        assert_eq!(res, vec![
+            Range { start: 32, length: 3 },
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_intersection_1() -> Result<()> {
+        let r1 = Range { start: 29, length: 1 };
+        let r2 = Range { start: 30, length: 1 };
+
+        assert_eq!(intersection(&r1, &r2), None);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_intersection_2() -> Result<()> {
+        let r1 = Range { start: 31, length: 1 };
+        let r2 = Range { start: 30, length: 1 };
+
+        assert_eq!(intersection(&r1, &r2), None);
+        Ok(())
+    }
+    
+    #[test]
+    pub fn test_intersection_3() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 30, length: 2 };
+
+        assert_eq!(intersection(&r1, &r2), Some(Range { start: 30, length: 1 }));
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_intersection_4() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 29, length: 3 };
+
+        assert_eq!(intersection(&r1, &r2), Some(Range { start: 29, length: 2 }));
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_union_1() -> Result<()> {
+        let r1 = Range { start: 28, length: 1 };
+        let r2 = Range { start: 30, length: 1 };
+
+        assert_eq!(union(&r1, &r2), None);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_union_2() -> Result<()> {
+        let r1 = Range { start: 28, length: 2 };
+        let r2 = Range { start: 30, length: 1 };
+
+        assert_eq!(union(&r1, &r2), Some(Range { start: 28, length: 3 }));
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_union_3() -> Result<()> {
+        let r1 = Range { start: 30, length: 2 };
+        let r2 = Range { start: 30, length: 1 };
+
+        assert_eq!(union(&r1, &r2), Some(Range { start: 30, length: 2 }));
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_merge_ranges_1() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let ranges = vec![r1];
+        let merged = merge_ranges(&ranges);
+
+        assert_eq!(merged, vec![r1]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_merge_ranges_2() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 31, length: 2 };
+        let ranges = vec![r1, r2];
+        let merged = merge_ranges(&ranges);
+
+        assert_eq!(merged, vec![Range { start: 29, length: 4 }]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_merge_ranges_3() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 32, length: 2 };
+        let ranges = vec![r1, r2];
+        let merged = merge_ranges(&ranges);
+
+        assert_eq!(merged, vec![
+            Range { start: 29, length: 2 },
+            Range { start: 32, length: 2 },
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_merge_ranges_4() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 31, length: 2 };
+        let r3 = Range { start: 33, length: 2 };
+        let ranges = vec![r1, r2, r3];
+        let merged = merge_ranges(&ranges);
+
+        assert_eq!(merged, vec![
+            Range { start: 29, length: 6 },
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_merge_ranges_5() -> Result<()> {
+        let r1 = Range { start: 29, length: 2 };
+        let r2 = Range { start: 31, length: 2 };
+        let r3 = Range { start: 34, length: 2 };
+        let r4 = Range { start: 36, length: 2 };
+        let ranges = vec![r1, r2, r3, r4];
+        let merged = merge_ranges(&ranges);
+
+        assert_eq!(merged, vec![
+            Range { start: 29, length: 4 },
+            Range { start: 34, length: 4 },
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::load("example")?;
+        assert_eq!(part2(&input).unwrap(), 46);
+        Ok(())
+    }
 }
