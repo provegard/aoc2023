@@ -92,7 +92,7 @@ fn split_range_for_map_part(range: &Range, part: &MapPart) -> Vec<Range> {
         vec.push(range.clone())
     }
 
-    println!("Split {:?} with {:?} -> {:?}", range, part, vec);
+    //println!("Split {:?} with {:?} -> {:?}", range, part, vec);
 
     vec
 }
@@ -224,7 +224,7 @@ fn merge_ranges(ranges: &Vec<Range>) -> Vec<Range> {
 
 fn map_ranges_recursive(almanac: &Almanac, ranges: Vec<Range>, from: ComponentKind) -> Vec<Range> {
 
-    //println!("from: {:?}, ranges = {:?}", from, ranges);
+    println!("from: {:?}, ranges = {:?}", from, ranges);
 
     let mp = almanac.maps.iter().find(|m| m.from_type == from);
     match mp {
@@ -237,11 +237,13 @@ fn map_ranges_recursive(almanac: &Almanac, ranges: Vec<Range>, from: ComponentKi
                 })
                 .collect_vec();
 
+            println!("to  : {:?}, ranges = {:?}", m.to_type, new_ranges);
+
             // Merge the resulting ranges
             let merged = merge_ranges(&new_ranges);
 
-            //println!("to  : {:?}, ranges = {:?}", m.to_type, merged);
-            //println!("");
+            println!("to  : {:?}, ranges = {:?}", m.to_type, merged);
+            println!("");
 
             map_ranges_recursive(almanac, merged, m.to_type)
         },
@@ -374,6 +376,18 @@ mod test {
 
         assert_eq!(res, vec![
             Range { start: 32, length: 3 },
+        ]);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_split_range_for_map_part_2() -> Result<()> {
+        let part = MapPart { dest_range_start: 52, source_range_start: 50, length: 48 };
+        let range = Range { start: 82, length: 1 };
+        let res = split_range_for_map_part(&range, &part);
+
+        assert_eq!(res, vec![
+            Range { start: 84, length: 1 },
         ]);
         Ok(())
     }
