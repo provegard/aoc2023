@@ -37,15 +37,13 @@ fn card_combos(count: usize) -> Vec<Vec<char>> {
 }
 
 fn hand_jokered(hand: &str) -> Vec<String> {
-    // tuples, where:
-    // 0 = the index of the joker char, e.g. if there are 3 joker chars then this can have the value 0, 1, or 2.
-    // 1 = the index of the joker char among all hand chars.
+    // Find the indexes of joker chars in the hand.
     let joker_indexes = hand.chars()
         .enumerate()
         .filter(|(_, ch)| *ch == '*')
         .map(|(idx, _)| idx)
-        .enumerate()
         .collect_vec();
+
     let joker_count = joker_indexes.len();
     if joker_count == 0 {
         vec![hand.to_string()]
@@ -55,7 +53,7 @@ fn hand_jokered(hand: &str) -> Vec<String> {
             let new_chars = hand.chars().enumerate().map(|(idx, ch)| {
                 if ch == '*' {
                     // replace with a joker char
-                    match joker_indexes.iter().find(|tup| tup.1 == idx) {
+                    match joker_indexes.iter().find_position(|i| **i == idx) {
                         Some(tup) => *combo.get(tup.0).unwrap(),
                         None => panic!("invalid index")
                     }
