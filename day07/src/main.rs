@@ -19,32 +19,87 @@ fn char_value(ch: &char) -> i8 {
                 'Q' => 12,
                 'K' => 13,
                 'A' => 14,
+                '*' => 1, // Joker
                 _ => panic!("Unhandled char: {}", ch),
             }
         }
     } 
 }
 
+fn card_combos(count: usize) -> Vec<Vec<char>> {
+    let cards = vec!['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A'];
+    let vec = cards
+        .iter()
+        .combinations_with_replacement(count)
+        .map(|combo| combo.into_iter().cloned().collect())
+        .collect_vec();
+    vec
+}
+
+fn hand_jokered(hand: &str) -> Vec<String> {
+    // tuples, where:
+    // 0 = the index of the joker char, e.g. if there are 3 joker chars then this can have the value 0, 1, or 2.
+    // 1 = the index of the joker char among all hand chars.
+    let joker_indexes = hand.chars()
+        .enumerate()
+        .filter(|(_, ch)| *ch == '*')
+        .map(|(idx, _)| idx)
+        .enumerate()
+        .collect_vec();
+    let joker_count = joker_indexes.len();
+    if joker_count == 0 {
+        vec![hand.to_string()]
+    } else {
+        let joker_combos = card_combos(joker_count);
+        joker_combos.iter().map(|combo| {
+            let new_chars = hand.chars().enumerate().map(|(idx, ch)| {
+                if ch == '*' {
+                    // replace with a joker char
+                    match joker_indexes.iter().find(|tup| tup.1 == idx) {
+                        Some(tup) => *combo.get(tup.0).unwrap(),
+                        None => panic!("invalid index")
+                    }
+                } else {
+                    ch
+                }
+            });
+            let s: String = new_chars.collect();
+            s
+        })
+        .collect_vec()
+    }
+}
+
 fn hand_strength(hand: &str) -> u32 {
-    let groups: Vec<(char, usize)> = hand.chars()
-        .sorted()
-        .group_by(|ch| *ch)
-        .into_iter()
-        .map(|(key, group)| (key, group.count()))
-        .collect();
 
-    let strength = match groups[..] {
-        [_] => 10, // five of a kind
-        [a, b] if a.1 == 4 || b.1 == 4 => 9, // four of a kind
-        [_, _] => 8, // full house
-        [a, b, c] if a.1 == 3 || b.1 == 3 || c.1 == 3 => 7, // three of a kind
-        [_, _, _] => 6, // two pair
-        [_, _, _, _] => 5, // one pair
-        [_, _, _, _, _] => 4, // high card
-        _ => panic!("Unhandled: {}", hand),
-    };
+    let hands = hand_jokered(hand);
 
-    strength
+    let strengh_opt = hands.iter().map(|h| {
+        let groups: Vec<(char, usize)> = h.chars()
+            .sorted()
+            .group_by(|ch| *ch)
+            .into_iter()
+            .map(|(key, group)| (key, group.count()))
+            .collect();
+
+        let strength = match groups[..] {
+            [_] => 10, // five of a kind
+            [a, b] if a.1 == 4 || b.1 == 4 => 9, // four of a kind
+            [_, _] => 8, // full house
+            [a, b, c] if a.1 == 3 || b.1 == 3 || c.1 == 3 => 7, // three of a kind
+            [_, _, _] => 6, // two pair
+            [_, _, _, _] => 5, // one pair
+            [_, _, _, _, _] => 4, // high card
+            _ => panic!("Unhandled: {}", hand),
+        };
+    
+        strength
+    }).max();
+
+    match strengh_opt {
+        Some(s) => s as u32,
+        None => 0
+    }
 }
 
 fn compare_hands_asc(a: &str, b: &str) -> Ordering {
@@ -85,9 +140,7 @@ fn parse_input(input: &Input) -> Vec<HandBid> {
         .collect_vec()
 }
 
-fn part1(input: &Input) -> Result<u32> {
-    // sort so that first is strongest
-    let hand_bids = parse_input(input);
+fn winnings(hand_bids: &Vec<HandBid>) -> u32 {
     let hand_bids_ord = hand_bids
         .iter()
         .sorted_by(|a, b| compare_hands_desc(&a.hand, &b.hand))
@@ -99,12 +152,28 @@ fn part1(input: &Input) -> Result<u32> {
             let rank = hand_bids_ord.len() - idx;
             acc + rank as u32 * hb.bid
         });
+    result
+}
+
+fn part1(input: &Input) -> Result<u32> {
+    // sort so that first is strongest
+    let hand_bids = parse_input(input);
+    let result = winnings(&hand_bids);
 
     Ok(result)
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+    let hand_bids = parse_input(input)
+        .iter()
+        .map(|hb| {
+            let jokered = hb.hand.replace("J", "*");
+            HandBid { hand: jokered, bid: hb.bid }
+        })
+        .collect_vec();
+
+    let result = winnings(&hand_bids);
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -126,6 +195,22 @@ mod test {
     }
 
     #[test]
+    pub fn test_hand_strengh_joker() -> Result<()> {
+        assert_eq!(hand_strength("AAAA*"), 10);
+        assert_eq!(hand_strength("AAA**"), 10);
+        assert_eq!(hand_strength("AA***"), 10);
+        assert_eq!(hand_strength("A****"), 10);
+        assert_eq!(hand_strength("*****"), 10);
+        assert_eq!(hand_strength("Q**Q2"), 9);
+        assert_eq!(hand_strength("T55*5"), 9);
+        assert_eq!(hand_strength("KT**T"), 9);
+        assert_eq!(hand_strength("1234*"), 5);
+        assert_eq!(hand_strength("123**"), 7);
+        assert_eq!(hand_strength("12***"), 9);
+        Ok(())
+    }
+
+    #[test]
     pub fn test_part1() -> Result<()> {
         let input = Input::load("example")?;
         assert_eq!(part1(&input).unwrap(), 6440);
@@ -139,11 +224,17 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::load("example")?;
+        assert_eq!(part2(&input).unwrap(), 5905);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = Input::load("input")?;
+        assert_eq!(part2(&input).unwrap(), 251824095);
+        Ok(())
+    }
 }
