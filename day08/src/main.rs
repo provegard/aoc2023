@@ -21,7 +21,7 @@ fn parse_input(input: &Input) -> Map {
     let lines = input.as_lines().collect_vec();
     let instructions = lines.first().unwrap().chars().collect_vec();
 
-    let re = Regex::new(r"(?<node>[A-Z]{3}) = \((?<left>[A-Z]{3}), (?<right>[A-Z]{3})\)").unwrap();
+    let re = Regex::new(r"(?<node>[A-Z0-9]{3}) = \((?<left>[A-Z0-9]{3}), (?<right>[A-Z0-9]{3})\)").unwrap();
 
     let nodes = lines.iter().skip(2).map(|line| {
         match re.captures(line) {
@@ -57,6 +57,28 @@ fn steps(map: &Map) -> u32 {
     step_count
 }
 
+fn all_z(nodes: &Vec<&Node>) -> bool {
+    nodes.iter().all(|n| n.name.ends_with("Z"))
+}
+
+fn steps_sim(map: &Map) -> u32 {
+    let mut nodes = map.nodes.iter().filter(|n| n.name.ends_with("A")).collect_vec();
+    let mut idx = 0;
+    let mut step_count = 0;
+
+    while !all_z(&nodes) {
+        let lr = map.instructions.get(idx).unwrap();
+
+        let node_names = nodes.iter().map(|n| if *lr == 'L' { &n.left } else { &n.right }).collect_vec();
+        nodes = node_names.iter().map(|nn| map.nodes.iter().find(|n| n.name == **nn).unwrap()).collect_vec();
+
+        idx = (idx + 1) % map.instructions.len();
+        step_count += 1;
+    }
+
+    step_count
+}
+
 fn part1(input: &Input) -> Result<u32> {
     let map = parse_input(input);
     let result = steps(&map);
@@ -64,7 +86,9 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+    let map = parse_input(input);
+    let result = steps_sim(&map);
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -94,11 +118,17 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::load("example3")?;
+        assert_eq!(part2(&input).unwrap(), 6);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = Input::load("input")?;
+        assert_eq!(part2(&input).unwrap(), 0);
+        Ok(())
+    }
 }
