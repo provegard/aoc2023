@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use itertools::Itertools;
 use regex::Regex;
 
 use util::Input;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     name: String,
     left: String,
@@ -14,7 +16,7 @@ struct Node {
 #[derive(Debug)]
 struct Map {
     instructions: Vec<char>,
-    nodes: Vec<Node>,
+    nodes: HashMap<String, Node>,
 }
 
 fn parse_input(input: &Input) -> Map {
@@ -35,7 +37,9 @@ fn parse_input(input: &Input) -> Map {
         }
     }).collect_vec();
 
-    Map { instructions, nodes }
+    let hm: HashMap<String, Node> = nodes.iter().map(|n| (n.name.to_string(), n.clone())).collect();
+
+    Map { instructions, nodes: hm }
 }
 
 fn steps(map: &Map) -> u32 {
@@ -46,7 +50,7 @@ fn steps(map: &Map) -> u32 {
 
     while node_name != "ZZZ" {
         let lr = map.instructions.get(idx).unwrap();
-        let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
+        let node = map.nodes.get(node_name).unwrap();
     
         node_name = if *lr == 'L' { &node.left } else { &node.right };
 
@@ -62,7 +66,7 @@ fn all_z(nodes: &Vec<&Node>) -> bool {
 }
 
 fn steps_sim(map: &Map) -> u32 {
-    let mut nodes = map.nodes.iter().filter(|n| n.name.ends_with("A")).collect_vec();
+    let mut nodes = map.nodes.iter().filter(|(_, n)| n.name.ends_with("A")).map(|(_, n)| n).collect_vec();
     let mut idx = 0;
     let mut step_count = 0;
 
@@ -70,7 +74,7 @@ fn steps_sim(map: &Map) -> u32 {
         let lr = map.instructions.get(idx).unwrap();
 
         let node_names = nodes.iter().map(|n| if *lr == 'L' { &n.left } else { &n.right }).collect_vec();
-        nodes = node_names.iter().map(|nn| map.nodes.iter().find(|n| n.name == **nn).unwrap()).collect_vec();
+        nodes = node_names.iter().map(|nn| map.nodes.get(*nn).unwrap()).collect_vec();
 
         idx = (idx + 1) % map.instructions.len();
         step_count += 1;
