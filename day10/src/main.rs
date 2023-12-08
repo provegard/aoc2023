@@ -66,15 +66,16 @@ fn find_starting_point(map: &Map) -> (Coordinate, Coordinate, Coordinate) {
     }
 }
 
-fn find_max_dist(map: &Map) -> usize {
+fn find_pipe_coordinates(map: &Map) -> Vec<Coordinate> {
+    let mut pipe: Vec<Coordinate> = Vec::new();
     let s = find_starting_point(map);
+    pipe.push(s.0.clone());
     let mut from = s.0;
     let mut current = s.1; // arbitrary, could be s.2 as well
-    let mut len = 1;
 
     while let Some(tile) = map.coordinates.get(&current) {
         match tile {
-            'S' => return len / 2, // done
+            'S' => break, // done
             _ => {
                 let coords_from = coordinates_from(tile, &current);
                 let next = coords_from.iter().find(|cc| **cc != from);
@@ -82,7 +83,7 @@ fn find_max_dist(map: &Map) -> usize {
                     Some(n) => {
                         from = current.clone(); // TODO: get rid of clone
                         current = n.clone();
-                        len += 1;
+                        pipe.push(n.clone());
                     },
                     None => panic!("No next coordinate"),
                 }
@@ -90,8 +91,12 @@ fn find_max_dist(map: &Map) -> usize {
         }
     }
 
-    //walk(map, &s.1, &s.0, 1) / 2
-    panic!("should not get here");
+    pipe
+}
+
+fn find_max_dist(map: &Map) -> usize {
+    let pipe = find_pipe_coordinates(map);
+    pipe.len() / 2
 }
 
 fn part1(input: &Input) -> Result<u32> {
