@@ -40,6 +40,13 @@ fn parse_input(input: &Input) -> Map {
     Map { instructions, nodes }
 }
 
+fn find_next_node_name<'a>(map: &'a Map, instr_idx: usize, node_name: &str) -> &'a str {
+    let lr = map.instructions.get(instr_idx).unwrap();
+    let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
+
+    if *lr == 'L' { &node.left } else { &node.right }
+}
+
 fn steps(map: &Map) -> u32 {
 
     #[tailcall]
@@ -47,11 +54,7 @@ fn steps(map: &Map) -> u32 {
         match node_name {
             "ZZZ" => step_count,
             _ => {
-                let lr = map.instructions.get(idx).unwrap();
-                let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
-    
-                let next_node_name = if *lr == 'L' { &node.left } else { &node.right };
-
+                let next_node_name = find_next_node_name(map, idx, node_name);
                 let next_idx = (idx + 1) % map.instructions.len();
                 steps_inner(map, next_node_name, next_idx, step_count + 1)
             }
@@ -68,11 +71,7 @@ fn find_period(map: &Map, initial_node_name: &str) -> u32 {
         if node_name.ends_with("Z") {
             step_count
         } else {
-            let lr = map.instructions.get(idx).unwrap();
-            let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
-        
-            let next_node_name = if *lr == 'L' { &node.left } else { &node.right };
-    
+            let next_node_name = find_next_node_name(map, idx, node_name);
             let next_idx = (idx + 1) % map.instructions.len();
             find_period_inner(map, next_node_name, next_idx, step_count + 1)
         }
