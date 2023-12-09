@@ -22,14 +22,25 @@ fn next_num(nums: &Vec<i32>) -> i32 {
     }
 }
 
+fn prev_num(nums: &Vec<i32>) -> i32 {
+    let diffs = find_diffs(nums);
+    if diffs.iter().all(|n| *n == 0) {
+        *nums.first().unwrap()
+    } else {
+        nums.first().unwrap() - prev_num(&diffs)
+    }
+}
+
 fn part1(input: &Input) -> Result<i32> {
     let vecs = input.as_lines().map(|line| parse_line(line)).collect_vec();
     let res: i32 = vecs.iter().map(|v| next_num(v)).sum();
     Ok(res)
 }
 
-fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+fn part2(input: &Input) -> Result<i32> {
+    let vecs = input.as_lines().map(|line| parse_line(line)).collect_vec();
+    let res: i32 = vecs.iter().map(|v| prev_num(v)).sum();
+    Ok(res)
 }
 
 #[cfg(test)]
@@ -56,11 +67,30 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part12_a() -> Result<()> {
+        let input = Input::from_lines([
+            "10  13  16  21  30  45"
+        ]);
+        assert_eq!(part2(&input).unwrap(), 5);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::from_lines([
+            "0 3 6 9 12 15",
+            "1 3 6 10 15 21",
+            "10 13 16 21 30 45",
+        ]);
+        assert_eq!(part2(&input).unwrap(), 2);
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_part2_input() -> Result<()> {
+        let input = Input::load("input")?;
+        assert_eq!(part2(&input).unwrap(), 803);
+        Ok(())
+    }
 }
