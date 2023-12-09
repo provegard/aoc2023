@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use itertools::Itertools;
 use regex::Regex;
@@ -17,7 +15,7 @@ struct Node {
 #[derive(Debug)]
 struct Map {
     instructions: Vec<char>,
-    nodes: HashMap<String, Node>,
+    nodes: Vec<Node>,
 }
 
 fn parse_input(input: &Input) -> Map {
@@ -38,9 +36,7 @@ fn parse_input(input: &Input) -> Map {
         }
     }).collect_vec();
 
-    let hm: HashMap<String, Node> = nodes.iter().map(|n| (n.name.to_string(), n.clone())).collect();
-
-    Map { instructions, nodes: hm }
+    Map { instructions, nodes }
 }
 
 fn steps(map: &Map) -> u32 {
@@ -51,7 +47,7 @@ fn steps(map: &Map) -> u32 {
 
     while node_name != "ZZZ" {
         let lr = map.instructions.get(idx).unwrap();
-        let node = map.nodes.get(node_name).unwrap();
+        let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
     
         node_name = if *lr == 'L' { &node.left } else { &node.right };
 
@@ -70,7 +66,7 @@ fn find_period(map: &Map, initial_node_name: &str) -> u32 {
 
     while !node_name.ends_with("Z") {
         let lr = map.instructions.get(idx).unwrap();
-        let node = map.nodes.get(node_name).unwrap();
+        let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
     
         node_name = if *lr == 'L' { &node.left } else { &node.right };
 
@@ -82,9 +78,9 @@ fn find_period(map: &Map, initial_node_name: &str) -> u32 {
 }
 
 fn steps_sim(map: &Map) -> u64 {
-    let node_names = map.nodes.keys().filter(|k| k.ends_with("A")).collect_vec();
+    let node_names = map.nodes.iter().filter(|n| n.name.ends_with("A")).collect_vec();
 
-    let periods = node_names.iter().map(|nn| find_period(map, nn)).collect_vec();
+    let periods = node_names.iter().map(|nn| find_period(map, &nn.name)).collect_vec();
 
     periods.iter().fold(1u64, |acc, p| lcm(acc, *p as u64))
 }
