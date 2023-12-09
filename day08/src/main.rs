@@ -4,6 +4,7 @@ use regex::Regex;
 
 use util::Input;
 use num_integer::lcm;
+use tailcall::tailcall;
 
 #[derive(Debug, Clone)]
 struct Node {
@@ -40,41 +41,44 @@ fn parse_input(input: &Input) -> Map {
 }
 
 fn steps(map: &Map) -> u32 {
-    // Mutable solution to avoid stack overflow. Is there a way to force tail recursion?
-    let mut node_name = "AAA";
-    let mut idx = 0;
-    let mut step_count = 0;
 
-    while node_name != "ZZZ" {
-        let lr = map.instructions.get(idx).unwrap();
-        let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
+    #[tailcall]
+    fn steps_inner(map: &Map, node_name: &str, idx: usize, step_count: u32) -> u32 {
+        match node_name {
+            "ZZZ" => step_count,
+            _ => {
+                let lr = map.instructions.get(idx).unwrap();
+                let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
     
-        node_name = if *lr == 'L' { &node.left } else { &node.right };
+                let next_node_name = if *lr == 'L' { &node.left } else { &node.right };
 
-        idx = (idx + 1) % map.instructions.len();
-        step_count += 1;
+                let next_idx = (idx + 1) % map.instructions.len();
+                steps_inner(map, next_node_name, next_idx, step_count + 1)
+            }
+        }
     }
 
-    step_count
+    steps_inner(map, "AAA", 0, 0)
 }
 
 fn find_period(map: &Map, initial_node_name: &str) -> u32 {
-    // Mutable solution to avoid stack overflow. Is there a way to force tail recursion?
-    let mut node_name = initial_node_name;
-    let mut idx = 0;
-    let mut step_count = 0;
 
-    while !node_name.ends_with("Z") {
-        let lr = map.instructions.get(idx).unwrap();
-        let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
+    #[tailcall]
+    fn find_period_inner(map: &Map, node_name: &str, idx: usize, step_count: u32) -> u32 {
+        if node_name.ends_with("Z") {
+            step_count
+        } else {
+            let lr = map.instructions.get(idx).unwrap();
+            let node = map.nodes.iter().find(|n| n.name == node_name).unwrap();
+        
+            let next_node_name = if *lr == 'L' { &node.left } else { &node.right };
     
-        node_name = if *lr == 'L' { &node.left } else { &node.right };
-
-        idx = (idx + 1) % map.instructions.len();
-        step_count += 1;
+            let next_idx = (idx + 1) % map.instructions.len();
+            find_period_inner(map, next_node_name, next_idx, step_count + 1)
+        }
     }
 
-    step_count
+    find_period_inner(map, initial_node_name, 0, 0)
 }
 
 fn steps_sim(map: &Map) -> u64 {
