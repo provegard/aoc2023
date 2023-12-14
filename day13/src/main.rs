@@ -9,7 +9,20 @@ struct Coord { x: usize, y: usize }
 struct Pattern {
     rows: Vec<String>,
     columns: Vec<String>
-    //rocks: Vec<Coord>
+}
+
+fn rows_to_cols(rows: &Vec<String>) -> Vec<String> {
+    let width = rows.first().unwrap().len();
+
+    let columns = (0..width).map(|i| {
+        let chars: String = rows.iter().map(|l| match l.chars().nth(i) {
+            Some(ch) => ch,
+            None => panic!("No char at index {} in {}", i, l),
+        }).collect();
+        chars
+    }).collect_vec();
+
+    columns
 }
 
 fn to_patterns(input: &Input) -> Vec<Pattern> {
@@ -17,16 +30,7 @@ fn to_patterns(input: &Input) -> Vec<Pattern> {
     let chunks = lines.split(|line| *line == "").map(|chunk| chunk.to_vec()).collect_vec();
 
     let v = chunks.iter().map(|chunk| {
-        let width = chunk.first().unwrap().len();
-
-        let columns = (0..width).map(|i| {
-            let chars: String = chunk.iter().map(|l| match l.chars().nth(i) {
-                Some(ch) => ch,
-                None => panic!("No char at index {} in {}", i, l),
-            }).collect();
-            chars
-        }).collect_vec();
-    
+        let columns = rows_to_cols(chunk);
         Pattern { rows: chunk.to_vec(), columns }
     }).collect_vec();
     v
