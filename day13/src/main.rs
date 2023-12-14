@@ -90,14 +90,7 @@ fn has_reflection_at_index(items: &Vec<String>, mirrored_idx: usize) -> bool {
 }
 
 fn reflection_lines_for_items(items: &Vec<String>, line_type: Orientation) -> Vec<ReflectionLine> {
-    let all_mirrored_idx = items.iter().enumerate().filter(|(idx, item)| {
-        match items.get(idx + 1) {
-            Some(other) => **item == *other,
-            None => false,
-        }
-    }).map(|opt| opt.0).collect_vec();
-
-    let v = all_mirrored_idx.into_iter().filter_map(|mirrored_idx| {
+    let v = (0..(items.len()-1)).into_iter().filter_map(|mirrored_idx| {
         let has_reflection = has_reflection_at_index(items, mirrored_idx);
         if has_reflection {
             Some(ReflectionLine { lines_before: mirrored_idx + 1, line_type })
