@@ -106,7 +106,39 @@ fn part1(input: &Input) -> Result<u32> {
 }
 
 fn part2(input: &Input) -> Result<u32> {
-    Ok(0)
+    let map = to_map(input);
+    let max_y = map.coordinates.iter().map(|e| e.0.y).max().unwrap();
+    let max_x = map.coordinates.iter().map(|e| e.0.x).max().unwrap();
+    let pipe_coords = find_pipe_coordinates(&map);
+
+    let mut is_inside = false;
+    let mut inside_count: u32 = 0;
+    for y in 0..max_y {
+        for x in 0..max_x {
+            let coord = Coordinate { x, y };
+
+            let bef = inside_count;
+            if pipe_coords.contains(&coord) {
+                let ch = map.coordinates.get(&coord).unwrap();
+                let is_vert_pipe = *ch != '-';
+
+                if is_vert_pipe { is_inside = !is_inside }
+            } else if is_inside {
+                inside_count += 1;
+            }
+
+            let added_inside = inside_count > bef;
+
+            match map.coordinates.get(&coord) {
+                _ if added_inside => print!("I"),
+                Some(ch) => print!("{}", ch),
+                None => print!("."),
+            }
+        }
+        println!("");
+    }
+
+    Ok(inside_count)
 }
 
 #[cfg(test)]
@@ -148,11 +180,10 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // pub fn test_part2() -> Result<()> {
-    //     let input = Input::from_lines([
-    //     ]);
-    //     assert_eq!(part2(&input).unwrap(), 0);
-    //     Ok(())
-    // }
+    #[test]
+    pub fn test_part2() -> Result<()> {
+        let input = Input::load("example_p2")?;
+        assert_eq!(part2(&input).unwrap(), 4);
+        Ok(())
+    }
 }
